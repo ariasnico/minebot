@@ -154,18 +154,18 @@ async function executeExplore(bot) {
     try {
         await Promise.race([movePromise, timeoutPromise]);
         logger.success('Exploration complete');
+        return { success: true };
     } catch (error) {
         // Stop pathfinder on error
         bot.pathfinder.stop();
         
         if (error.message === 'Exploration timeout') {
-            logger.warn('Exploration timed out, but that\'s OK');
-        } else {
-            throw error;
+            logger.warn('Exploration timed out');
+            // Return failure so LLM knows to try a different approach
+            throw new Error('Exploration timed out - could not reach destination');
         }
+        throw error;
     }
-    
-    return { success: true };
 }
 
 /**
