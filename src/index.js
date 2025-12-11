@@ -5,12 +5,13 @@
  */
 
 import mineflayer from 'mineflayer';
-import { pathfinder } from 'mineflayer-pathfinder';
+import pathfinderPkg from 'mineflayer-pathfinder';
+const { pathfinder } = pathfinderPkg;
 import collectBlock from 'mineflayer-collectblock';
 import pvp from 'mineflayer-pvp';
 import minecraftData from 'minecraft-data';
 
-import { BOT_CONFIG, BEHAVIOR_CONFIG, OLLAMA_CONFIG } from './config.js';
+import { BOT_CONFIG, BEHAVIOR_CONFIG, OLLAMA_CONFIG, LOG_CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 import { perceive, formatPerceptionForLLM } from './core/perception.js';
 import { think, testConnection } from './core/brain.js';

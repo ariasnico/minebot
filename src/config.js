@@ -13,9 +13,10 @@ export const BOT_CONFIG = {
     
     // Server connection
     host: 'localhost',
-    port: 25565,
+    port: 49781,
     
     // Minecraft version (auto-detect if null)
+    // Supported: 1.8 to 1.20.4 - Use null for auto-detect
     version: null,
     
     // Authentication (for premium servers)
