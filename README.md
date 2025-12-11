@@ -2,9 +2,30 @@
 
 Un bot de Minecraft completamente autónomo que utiliza un **LLM local (Ollama)** para tomar decisiones de alto nivel mientras juega survival por ti.
 
-![Node.js](https://img.shields.io/badge/Node.js-18+-green)
-![Mineflayer](https://img.shields.io/badge/Mineflayer-4.20-blue)
+![Node.js](https://img.shields.io/badge/Node.js-20+-green)
+![Mineflayer](https://img.shields.io/badge/Mineflayer-4.33-blue)
 ![Ollama](https://img.shields.io/badge/Ollama-Local%20LLM-purple)
+
+## ⚡ Quick Start (TL;DR)
+
+```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Tener Ollama corriendo con un modelo
+ollama serve                    # En una terminal
+ollama pull llama3.2           # En otra terminal
+
+# 3. Abrir Minecraft (1.20.4 o 1.21.4), crear mundo, Esc → Open to LAN
+
+# 4. Editar el puerto en src/config.js
+#    port: XXXXX  ← El número que apareció en Minecraft
+
+# 5. Ejecutar el bot
+npm start
+```
+
+---
 
 ## 🎯 Características
 
@@ -16,79 +37,141 @@ Un bot de Minecraft completamente autónomo que utiliza un **LLM local (Ollama)*
 
 ## 📋 Requisitos
 
-- **Node.js** 18 o superior
-- **Ollama** instalado y corriendo
-- **Minecraft** Java Edition (servidor o mundo singleplayer con LAN abierto)
+| Requisito | Versión |
+|-----------|---------|
+| Node.js | 20+ (recomendado 22+) |
+| Ollama | Última versión |
+| Minecraft Java | **1.20.4** o **1.21.4** (ver nota abajo) |
 
-## 🚀 Instalación
+### ⚠️ Versiones de Minecraft Soportadas
 
-### 1. Clonar e instalar dependencias
+| Versión | Estado |
+|---------|--------|
+| 1.8 - 1.20.4 | ✅ Funciona |
+| 1.21.1 - 1.21.4 | ✅ Funciona |
+| 1.21.5+ | ❌ No soportado aún |
+
+**Nota**: Si usás una versión muy nueva (1.21.10+), las librerías aún no la soportan. Usá **1.21.4** que es la más nueva compatible.
+
+---
+
+## 🚀 Instalación Paso a Paso
+
+### Paso 1: Instalar dependencias del proyecto
 
 ```bash
-git clone <tu-repo>
-cd minebot
+cd MineBot
 npm install
 ```
 
-### 2. Instalar y configurar Ollama
+### Paso 2: Instalar Ollama
+
+1. Descargá Ollama de: https://ollama.com/download
+2. Instalalo (siguiente, siguiente, instalar)
+3. Ollama se inicia automáticamente
+
+### Paso 3: Descargar un modelo LLM
+
+Abrí una terminal y ejecutá:
 
 ```bash
-# Instalar Ollama (Windows/Mac/Linux)
-# Visita: https://ollama.ai/download
-
-# Iniciar Ollama
-ollama serve
-
-# Descargar un modelo (en otra terminal)
 ollama pull llama3.2
-# O alternativamente:
-ollama pull mistral
-ollama pull qwen2.5:7b
 ```
 
-### 3. Configurar el bot
+Esto descarga ~2GB. Esperá a que termine.
 
-Edita `src/config.js` según tu setup:
+### Paso 4: Verificar que Ollama funciona
+
+```bash
+ollama list
+```
+
+Deberías ver `llama3.2:latest` en la lista.
+
+---
+
+## 🎮 Cómo Ejecutar el Bot
+
+### 1. Abrir Minecraft
+
+1. Abrí Minecraft Java Edition
+2. **Importante**: Usá versión **1.20.4** o **1.21.4** (creá una instalación en el Launcher si no la tenés)
+3. Creá o cargá un mundo Survival
+4. Presioná `Esc`
+5. Click en **"Open to LAN"**
+6. Click en **"Start LAN World"**
+7. Mirá el chat, aparecerá algo como:
+   ```
+   Local game hosted on port 54321
+   ```
+8. **Anotá ese número** (el puerto)
+
+### 2. Configurar el puerto
+
+Abrí el archivo `src/config.js` y cambiá el puerto:
 
 ```javascript
-// Conexión a Minecraft
 export const BOT_CONFIG = {
-    username: 'MineBot',      // Nombre del bot
-    host: 'localhost',        // IP del servidor
-    port: 25565,              // Puerto
-    auth: 'offline'           // 'microsoft' para premium
-};
-
-// Modelo de Ollama
-export const OLLAMA_CONFIG = {
-    model: 'llama3.2',        // Modelo descargado
-    timeout: 60000            // Timeout en ms
+    username: 'MineBot',
+    host: 'localhost',
+    port: 54321,        // ← PON TU PUERTO AQUÍ
+    version: null,
+    auth: 'offline',
 };
 ```
 
-### 4. Abrir Minecraft al LAN
-
-Para singleplayer:
-1. Abre un mundo en Minecraft
-2. Presiona `Esc` → `Open to LAN`
-3. Habilita cheats si quieres
-4. Click en `Start LAN World`
-5. Anota el puerto mostrado (ej: 54321)
-6. Actualiza `port` en `config.js`
-
-## ▶️ Uso
+### 3. Ejecutar el bot
 
 ```bash
-# Iniciar el bot
 npm start
-
-# Modo desarrollo (auto-restart)
-npm run dev
 ```
 
-## 🧠 Cómo Funciona
+### 4. ¡Listo!
 
-### El Loop Cognitivo
+Deberías ver en la consola:
+```
+✓ [SUCCESS] Ollama connection OK
+✓ [SUCCESS] Bot logged in successfully
+✓ [SUCCESS] Bot spawned in world
+🧠 [BRAIN] Thinking...
+🧠 [BRAIN] Decision: EXPLORE → random
+```
+
+**Entrá al juego y vas a ver al bot moviéndose!** 🎉
+
+---
+
+## 🔄 Cada vez que quieras usar el bot
+
+1. **Abrir Minecraft** y cargar un mundo
+2. **Open to LAN** y anotar el puerto
+3. **Editar** `src/config.js` con el nuevo puerto
+4. **Ejecutar** `npm start`
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+MineBot/
+├── src/
+│   ├── index.js          # Entry point y loop principal
+│   ├── config.js         # ⭐ CONFIGURACIÓN (editar puerto aquí)
+│   ├── core/
+│   │   ├── brain.js      # Comunicación con Ollama LLM
+│   │   ├── perception.js # Lee el estado del mundo
+│   │   └── actions.js    # Ejecuta acciones (minar, craftear, etc)
+│   └── utils/
+│       └── logger.js     # Logs bonitos en consola
+├── package.json
+└── README.md
+```
+
+---
+
+## 🧠 Cómo Funciona el Bot
+
+### El Loop Cognitivo (cada 5 segundos)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -102,147 +185,91 @@ npm run dev
 └─────────────────────────────────────────────────────────────┘
 ```
 
-1. **PERCIBE** (`perception.js`): Recolecta información del mundo
-   - Salud, hambre, inventario
-   - Bloques cercanos (minerales, madera)
-   - Entidades (mobs hostiles, animales)
-   - Bioma, hora del día
+1. **PERCIBE**: Lee salud, inventario, bloques cercanos, mobs
+2. **PIENSA**: Envía todo a Ollama → El LLM decide qué hacer
+3. **ACTÚA**: Ejecuta la acción (minar, craftear, explorar, pelear)
+4. **FEEDBACK**: Guarda si funcionó o falló para la próxima decisión
 
-2. **PIENSA** (`brain.js`): Envía contexto a Ollama
-   - El LLM decide la próxima acción
-   - Responde con JSON estructurado
+### Acciones que el Bot puede hacer
 
-3. **ACTÚA** (`actions.js`): Ejecuta la decisión
-   - Usa plugins de Mineflayer
-   - Maneja errores gracefully
+| Acción | Qué hace | Ejemplo |
+|--------|----------|---------|
+| `mine` | Mina un bloque | `oak_log`, `iron_ore`, `cobblestone` |
+| `craft` | Craftea un item | `wooden_pickaxe`, `crafting_table` |
+| `explore` | Camina buscando recursos | - |
+| `fight` | Ataca un mob | `zombie`, `skeleton` |
+| `eat` | Come comida | `bread`, `cooked_beef` |
+| `chat` | Manda mensaje en chat | - |
+| `wait` | Espera | - |
 
-4. **FEEDBACK**: Registra resultado para la próxima iteración
+---
 
-### Acciones Disponibles
+## ⚙️ Configuración
 
-| Acción | Descripción | Ejemplo Target |
-|--------|-------------|----------------|
-| `mine` | Minar/recolectar bloques | `oak_log`, `iron_ore` |
-| `craft` | Craftear items | `wooden_pickaxe`, `furnace` |
-| `explore` | Explorar área nueva | `random` |
-| `fight` | Atacar entidad hostil | `zombie`, `skeleton` |
-| `eat` | Comer comida | `bread`, `cooked_beef` |
-| `chat` | Enviar mensaje | `"Hello!"` |
-| `wait` | Esperar | `idle` |
+Todo está en `src/config.js`:
 
-## 📁 Estructura del Proyecto
-
-```
-minebot/
-├── src/
-│   ├── index.js          # Entry point y loop principal
-│   ├── config.js         # Configuración
-│   ├── core/
-│   │   ├── brain.js      # Comunicación con Ollama
-│   │   ├── perception.js # Recolección de contexto
-│   │   └── actions.js    # Ejecución de acciones
-│   └── utils/
-│       └── logger.js     # Sistema de logging
-├── package.json
-└── README.md
-```
-
-## ⚙️ Configuración Avanzada
-
-### Cambiar Modelo de LLM
+### Cambiar el modelo LLM
 
 ```javascript
-// src/config.js
 export const OLLAMA_CONFIG = {
-    model: 'mistral',     // Más rápido, menos preciso
-    // model: 'llama3.2',   // Balance
-    // model: 'qwen2.5:7b', // Alternativa
+    model: 'llama3.2',     // Cambiar a 'mistral' o 'qwen2.5:7b'
+    timeout: 60000,        // Aumentar si tu GPU es lenta
 };
 ```
 
-### Ajustar Comportamiento
+### Cambiar cada cuánto piensa
 
 ```javascript
-// src/config.js
 export const BEHAVIOR_CONFIG = {
-    thinkInterval: 5000,  // Cada cuánto "piensa" (ms)
-    pvp: {
-        enabled: true,
-        hostileMobs: ['zombie', 'skeleton', ...]
-    },
-    health: {
-        critical: 6,      // Activar modo supervivencia
-        hungry: 14        // Buscar comida
-    }
+    thinkInterval: 5000,   // 5000ms = 5 segundos
 };
 ```
 
-### Debug
+### Ver más información de debug
 
 ```javascript
-// src/config.js
 export const LOG_CONFIG = {
-    debugLLM: true,        // Ver prompts/respuestas
-    debugPerception: true, // Ver datos de percepción
-    debugActions: true     // Ver ejecución de acciones
+    debugLLM: true,        // Ver todo lo que manda/recibe de Ollama
+    debugPerception: true, // Ver qué ve el bot
+    debugActions: true,    // Ver qué hace el bot
 };
 ```
 
-## 🔧 Troubleshooting
+---
+
+## 🔧 Solución de Problemas
 
 ### "Cannot connect to Ollama"
+
+Ollama no está corriendo. Abrí una terminal y ejecutá:
 ```bash
-# Verifica que Ollama esté corriendo
 ollama serve
 ```
 
 ### "Model not found"
+
+No descargaste el modelo:
 ```bash
-# Descarga el modelo
 ollama pull llama3.2
 ```
 
-### "Unexpected token in JSON"
-El LLM está generando texto extra. Edita el System Prompt en `brain.js`:
-```javascript
-// Agrega esta línea al final del SYSTEM_PROMPT
-"CRITICAL: Output ONLY the raw JSON. No text before or after."
-```
+### "Unsupported protocol version"
 
-### "Connection timeout"
-Aumenta el timeout si tu GPU es lenta:
-```javascript
-export const OLLAMA_CONFIG = {
-    timeout: 120000  // 2 minutos
-};
-```
+Tu Minecraft es muy nuevo. Usá versión **1.20.4** o **1.21.4**.
 
-### "ECONNREFUSED to Minecraft"
-- Verifica que el servidor/LAN esté abierto
-- Confirma IP y puerto en `config.js`
+### "ECONNRESET" o "ECONNREFUSED"
 
-## 📝 Extender el Bot
+- Verificá que Minecraft esté abierto
+- Verificá que el puerto en `config.js` sea correcto
+- Verificá que hayas hecho "Open to LAN"
 
-### Agregar Nueva Acción
+### El bot no hace nada / está quieto
 
-1. Agrega la acción al `SYSTEM_PROMPT` en `brain.js`
-2. Crea el handler en `actions.js`:
-```javascript
-async function executeNewAction(bot, target) {
-    // Tu lógica aquí
-}
-```
-3. Agrega el case en `executeAction()`:
-```javascript
-case 'newaction':
-    await executeNewAction(bot, target);
-    result.success = true;
-    break;
-```
+- Mirá la consola, debería decir "Thinking..."
+- Si dice errores de Ollama, verificá que esté corriendo
+- Si el LLM tarda mucho, aumentá el timeout
 
-### Agregar Percepción
-
-Edita `perception.js` para incluir más datos del mundo.
+---
 
 ## 📄 Licencia
 
@@ -251,4 +278,3 @@ MIT License - Usa este código como quieras.
 ---
 
 **Made with ❤️ for Minecraft automation enthusiasts**
-
