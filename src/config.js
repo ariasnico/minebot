@@ -13,10 +13,10 @@ export const BOT_CONFIG = {
     
     // Server connection
     host: 'localhost',
-    port: 49781,
+    port: 54158,
     
-    // Minecraft version (auto-detect if null)
-    // Supported: 1.8 to 1.20.4 - Use null for auto-detect
+    // Minecraft version (set to specific version or null to auto-detect)
+    // MAX SUPPORTED: 1.21.4 - Newer versions (1.21.10+) are NOT yet supported by mineflayer
     version: null,
     
     // Authentication (for premium servers)
