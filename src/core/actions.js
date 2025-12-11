@@ -272,6 +272,67 @@ async function executeEat(bot, target) {
 }
 
 /**
+ * Execute a place block action
+ */
+async function executePlace(bot, target) {
+    logger.action(`Placing: ${target}`);
+    
+    const mcData = bot.mcData;
+    
+    // Find the block in inventory
+    const blockItem = bot.inventory.items().find(item => item.name === target);
+    
+    if (!blockItem) {
+        throw new Error(`No ${target} in inventory`);
+    }
+    
+    // Equip the block
+    await bot.equip(blockItem, 'hand');
+    
+    // Find a suitable place to put it (near the bot, on the ground)
+    const pos = bot.entity.position.floored();
+    
+    // Try to find a solid block to place on
+    const placementSpots = [
+        pos.offset(1, -1, 0),
+        pos.offset(-1, -1, 0),
+        pos.offset(0, -1, 1),
+        pos.offset(0, -1, -1),
+        pos.offset(1, 0, 0),
+        pos.offset(-1, 0, 0),
+        pos.offset(0, 0, 1),
+        pos.offset(0, 0, -1),
+    ];
+    
+    for (const spot of placementSpots) {
+        const block = bot.blockAt(spot);
+        if (block && block.name !== 'air' && block.name !== 'water' && block.name !== 'lava') {
+            // Found a solid block, try to place on top or side
+            const faceVectors = [
+                { x: 0, y: 1, z: 0 },  // top
+                { x: 1, y: 0, z: 0 },  // sides
+                { x: -1, y: 0, z: 0 },
+                { x: 0, y: 0, z: 1 },
+                { x: 0, y: 0, z: -1 },
+            ];
+            
+            for (const face of faceVectors) {
+                try {
+                    await bot.placeBlock(block, { x: face.x, y: face.y, z: face.z });
+                    logger.success(`Placed ${target}`);
+                    return { success: true };
+                } catch (e) {
+                    // Try next face
+                    continue;
+                }
+            }
+        }
+    }
+    
+    throw new Error(`Could not find a place to put ${target}`);
+}
+
+/**
  * Execute a chat action
  */
 async function executeChat(bot, message) {
@@ -333,6 +394,11 @@ export async function executeAction(bot, decision) {
                 
             case 'fight':
                 await executeFight(bot, target);
+                result.success = true;
+                break;
+                
+            case 'place':
+                await executePlace(bot, target);
                 result.success = true;
                 break;
                 
