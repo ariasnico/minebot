@@ -55,8 +55,8 @@ function getPickaxeAction(inv, nearbyTable, bot) {
         return { action: 'craft', target: plankType, reason: 'Converting logs to planks' };
     }
     
-    // Step 3: Need crafting table - but only craft if we don't have one
-    if (!inv.hasCraftingTable && inv.planks >= 4) {
+    // Step 3: Need crafting table - but only craft if we don't have one AND there isn't one nearby
+    if (!inv.hasCraftingTable && !nearbyTable && inv.planks >= 4) {
         return { action: 'craft', target: 'crafting_table', reason: 'Need crafting table for pickaxe' };
     }
     
