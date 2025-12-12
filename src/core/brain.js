@@ -47,10 +47,15 @@ DECISION TREE (follow in order!):
 
 SUPER IMPORTANT - FOLLOW THESE EXACTLY:
 - If you see "🚨 CRITICAL" → COPY THE ACTION FROM "ACTION REQUIRED" EXACTLY!
-- If you see "crafting_table" in CAN CRAFT list → craft it immediately!
-- If you see "stick" in CAN CRAFT list and you don't have sticks → craft stick!
-- STOP mining logs once you have 4+ planks. Make the crafting_table!
-- Do NOT keep mining logs forever. Progress to the next step!
+- If "Crafting table nearby: YES" → Do NOT craft another crafting_table! Make sticks or pickaxe instead!
+- If you have sticks AND planks AND crafting table nearby → CRAFT WOODEN_PICKAXE!
+- If crafting table nearby but no sticks → craft stick first!
+- Only craft ONE crafting_table, then PLACE it, then make TOOLS!
+
+COMMON MISTAKES - DO NOT DO THESE:
+- Do NOT craft multiple crafting_tables (you only need ONE)
+- Do NOT keep crafting crafting_table after placing one
+- Do NOT ignore the CRITICAL hints
 
 COMMON MISTAKES TO AVOID:
 - Do NOT craft sticks without planks in inventory

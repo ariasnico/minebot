@@ -302,29 +302,42 @@ ${p.lastAction.error ? `Reason: ${p.lastAction.error}` : ''}`;
     const canCraftTable = p.craftable.includes('crafting_table');
     const canCraftSticks = p.craftable.includes('stick');
     const canCraftPickaxe = p.craftable.includes('wooden_pickaxe');
+    const craftingTableNearby = p.nearby.blocks.crafting_table;
     
-    if (hasCraftingTable && !p.nearby.blocks.crafting_table) {
-        // HIGHEST PRIORITY: If has crafting table, MUST place it!
-        context += `\n\n🚨 CRITICAL: You have a crafting_table in inventory! You MUST place it NOW!
+    // PRIORITY 1: If crafting table is nearby, focus on making tools!
+    if (craftingTableNearby) {
+        if (canCraftPickaxe) {
+            context += `\n\n🚨 CRITICAL: Crafting table is placed! CRAFT THE PICKAXE NOW!
+ACTION REQUIRED: {"action": "craft", "target": "wooden_pickaxe", "reason": "finally make the pickaxe"}
+DO NOT craft another crafting_table! You already have one placed!`;
+        } else if (!hasSticks && canCraftSticks) {
+            context += `\n\n🚨 CRITICAL: Crafting table nearby but you need STICKS first!
+ACTION REQUIRED: {"action": "craft", "target": "stick", "reason": "need sticks for pickaxe"}`;
+        } else if (!hasSticks && !canCraftSticks) {
+            context += `\n\n⚠️ HINT: Need planks to make sticks. Craft oak_planks first.`;
+        } else if (hasSticks && !hasPlanks) {
+            context += `\n\n⚠️ HINT: Need more planks for pickaxe. Mine logs and craft planks.`;
+        } else {
+            context += `\n\n⚠️ HINT: Crafting table nearby. Get 3 planks + 2 sticks for pickaxe.`;
+        }
+    }
+    // PRIORITY 2: Place crafting table if in inventory
+    else if (hasCraftingTable) {
+        context += `\n\n🚨 CRITICAL: You have a crafting_table! PLACE IT NOW!
 ACTION REQUIRED: {"action": "place", "target": "crafting_table", "reason": "must place crafting table"}`;
-    } else if (canCraftPickaxe && p.nearby.blocks.crafting_table) {
-        context += `\n\n🚨 CRITICAL: You can craft a pickaxe! Do it NOW!
-ACTION REQUIRED: {"action": "craft", "target": "wooden_pickaxe", "reason": "craft pickaxe"}`;
-    } else if (canCraftTable && !hasCraftingTable) {
-        // Can craft crafting_table - DO IT!
-        context += `\n\n🚨 CRITICAL: You have enough planks! Craft the crafting_table NOW!
-ACTION REQUIRED: {"action": "craft", "target": "crafting_table", "reason": "have enough planks"}`;
-    } else if (totalItems === 0 || (!hasLogs && !hasPlanks && !hasCraftingTable)) {
-        context += `\n\n⚠️ HINT: Inventory empty! You MUST mine wood first (oak_log, birch_log, etc.)`;
-    } else if (hasLogs && !hasPlanks) {
-        context += `\n\n⚠️ HINT: You have logs! Craft them into planks (oak_planks, birch_planks).`;
-    } else if (hasPlanks && canCraftSticks && !hasSticks) {
-        context += `\n\n⚠️ HINT: Craft sticks now! You need them for tools.
-ACTION: {"action": "craft", "target": "stick", "reason": "need sticks for tools"}`;
-    } else if (hasPlanks && !canCraftTable && !hasCraftingTable) {
-        context += `\n\n⚠️ HINT: Need more planks for crafting_table. Mine more logs!`;
-    } else if (p.nearby.blocks.crafting_table && hasSticks && hasPlanks) {
-        context += `\n\n⚠️ HINT: Crafting table nearby! Craft wooden_pickaxe now!`;
+    }
+    // PRIORITY 3: Craft crafting table if possible (and don't have one)
+    else if (canCraftTable) {
+        context += `\n\n🚨 CRITICAL: You have enough planks! Craft crafting_table NOW!
+ACTION REQUIRED: {"action": "craft", "target": "crafting_table", "reason": "need crafting table for tools"}`;
+    }
+    // PRIORITY 4: Get materials
+    else if (totalItems === 0 || (!hasLogs && !hasPlanks)) {
+        context += `\n\n⚠️ HINT: No materials! Mine oak_log or birch_log.`;
+    } else if (hasLogs) {
+        context += `\n\n⚠️ HINT: Craft planks from your logs (oak_planks).`;
+    } else if (hasPlanks && !canCraftTable) {
+        context += `\n\n⚠️ HINT: Need 4 planks for crafting_table. Mine more logs!`;
     }
     
     return context;
