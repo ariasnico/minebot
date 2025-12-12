@@ -34,16 +34,20 @@ ABSOLUTE RULES - READ CAREFULLY:
 7. NEVER try to craft something not in "CAN CRAFT" list!
 8. If last action FAILED → do something DIFFERENT
 
-DECISION TREE:
-- Health < 5? → eat food OR wait (don't die!)
-- No wood in inventory? → mine oak_log or birch_log (PRIORITY!)
-- Have logs, no planks? → craft planks
-- Have planks, no sticks? → craft stick  
-- Have planks, no crafting_table? → craft crafting_table
-- Have crafting_table item? → place crafting_table
-- Crafting table nearby + have materials? → craft wooden_pickaxe
-- Have pickaxe? → mine cobblestone
-- Nothing nearby to mine? → explore
+DECISION TREE (follow in order!):
+1. Health < 5? → eat food OR wait (don't die!)
+2. Have crafting_table in inventory? → PLACE IT IMMEDIATELY! action="place" target="crafting_table"
+3. No wood in inventory? → mine oak_log or birch_log
+4. Have logs, no planks? → craft oak_planks (or birch_planks)
+5. Have planks, no sticks? → craft stick  
+6. Have 4+ planks, no crafting_table? → craft crafting_table
+7. Crafting table nearby + have sticks + planks? → craft wooden_pickaxe
+8. Have pickaxe? → mine cobblestone
+9. Nothing nearby to mine? → explore
+
+SUPER IMPORTANT:
+- If you see "Crafting Table: Yes (in inventory" in state → YOUR NEXT ACTION MUST BE place crafting_table!
+- If you see "🚨 CRITICAL" in state → FOLLOW THAT INSTRUCTION EXACTLY!
 
 COMMON MISTAKES TO AVOID:
 - Do NOT craft sticks without planks in inventory
