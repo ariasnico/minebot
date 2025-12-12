@@ -131,7 +131,7 @@ export async function think(context) {
 CURRENT GAME STATE:
 ${context}
 
-Based on the current state, what should I do next? Respond with ONLY the JSON object.`;
+Based on the current state, what should I do next? Respond with ONLY the JSON object. /no_think`;
 
     if (LOG_CONFIG.debugLLM) {
         logger.debug('Sending prompt to LLM', { length: prompt.length });
@@ -154,10 +154,20 @@ Based on the current state, what should I do next? Respond with ONLY the JSON ob
             }
         );
 
-        const rawResponse = response.data.response;
+        const rawResponse = response.data.response || '';
         
         if (LOG_CONFIG.debugLLM) {
             logger.debug('Raw LLM response', rawResponse);
+        }
+        
+        // Handle empty response (Qwen3 thinking mode issue)
+        if (!rawResponse || rawResponse.trim() === '') {
+            logger.warn('LLM returned empty response, using fallback action');
+            return {
+                action: 'explore',
+                target: 'random',
+                reason: 'LLM returned empty response'
+            };
         }
 
         // Clean and parse the response
