@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node --max-old-space-size=4096 src/index.js",
+    "start:baritone": "node --max-old-space-size=4096 src/index-baritone.js",
     "dev": "node --watch --max-old-space-size=4096 src/index.js"
   },
   "keywords": [

@@ -1,0 +1,28 @@
+{
+    "schemaVersion": 1,
+    "id": "minebot",
+    "version": "${version}",
+    "name": "MineBot AI Controller",
+    "description": "Control Minecraft with AI via HTTP API + Baritone",
+    "authors": ["MineBot Team"],
+    "contact": {},
+    "license": "MIT",
+    "icon": "assets/minebot/icon.png",
+    "environment": "client",
+    "entrypoints": {
+        "client": [
+            "com.minebot.mod.MineBotMod"
+        ]
+    },
+    "mixins": [],
+    "depends": {
+        "fabricloader": ">=${loader_version}",
+        "minecraft": "~${minecraft_version}",
+        "java": ">=21",
+        "fabric-api": "*"
+    },
+    "suggests": {
+        "baritone": "*"
+    }
+}
+
