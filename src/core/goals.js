@@ -16,8 +16,9 @@ import logger from '../utils/logger.js';
 export function getNextAction(bot) {
     const inv = analyzeInventory(bot);
     const nearbyTable = findNearbyCraftingTable(bot);
+    const distantTable = findDistantCraftingTable(bot);
     
-    logger.info(`📦 Inventory: ${inv.logs} logs, ${inv.planks} planks, ${inv.sticks} sticks, pickaxe: ${inv.hasWoodenPickaxe}`);
+    logger.info(`📦 Inventory: ${inv.logs} logs, ${inv.planks} planks, ${inv.sticks} sticks, table: ${inv.hasCraftingTable ? 'inv' : 'no'}, nearby: ${nearbyTable ? 'yes' : 'no'}, pickaxe: ${inv.hasWoodenPickaxe}`);
     
     // GOAL 1: Get a wooden pickaxe
     if (!inv.hasWoodenPickaxe) {
@@ -78,27 +79,31 @@ function getPickaxeAction(inv, nearbyTable, bot) {
         }
     }
     
-    // Step 6: Make sticks (need 2 for pickaxe) - only if near table
+    // Step 6: If we have materials for pickaxe but NO table nearby - GO TO one or make one
+    if (inv.sticks >= 2 && inv.planks >= 3 && !nearbyTable) {
+        // Check if there's a table somewhere we can go to
+        const distantTable = findDistantCraftingTable(bot);
+        if (distantTable) {
+            return { action: 'goto', target: 'crafting_table', reason: 'Walking to crafting table' };
+        }
+        // If we have one in inventory, place it
+        if (inv.hasCraftingTable) {
+            return { action: 'place', target: 'crafting_table', reason: 'Placing table to craft pickaxe' };
+        }
+        // Otherwise we need to make one (need 4 planks)
+        if (inv.planks >= 4) {
+            return { action: 'craft', target: 'crafting_table', reason: 'Making table for pickaxe' };
+        }
+    }
+    
+    // Step 7: Make sticks (need 2 for pickaxe) - only if near table
     if (nearbyTable && inv.sticks < 2 && inv.planks >= 2) {
         return { action: 'craft', target: 'stick', reason: 'Need sticks for pickaxe' };
     }
     
-    // Step 7: Make the pickaxe! - only if near table
+    // Step 8: Make the pickaxe! - only if ACTUALLY near table
     if (nearbyTable && inv.sticks >= 2 && inv.planks >= 3) {
         return { action: 'craft', target: 'wooden_pickaxe', reason: 'Crafting wooden pickaxe!' };
-    }
-    
-    // Step 8: If we have materials but no nearby table, we need to find/place one
-    if (!nearbyTable && inv.sticks >= 2 && inv.planks >= 3) {
-        // Check if there's a table somewhere we can go to
-        const distantTable = findDistantCraftingTable(bot);
-        if (distantTable) {
-            return { action: 'goto', target: 'crafting_table', reason: 'Going to crafting table to craft pickaxe' };
-        }
-        // Otherwise we need to make and place one
-        if (inv.planks >= 4 && !inv.hasCraftingTable) {
-            return { action: 'craft', target: 'crafting_table', reason: 'Need crafting table' };
-        }
     }
     
     // Need more materials
