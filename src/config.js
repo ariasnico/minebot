@@ -32,7 +32,7 @@ export const OLLAMA_CONFIG = {
     
     // Model to use (must be downloaded in Ollama)
     // Options: 'llama3.2', 'llama3.2:3b', 'mistral', 'mistral:7b', 'qwen2.5:7b'
-    model: 'llama3.2',
+    model: 'qwen2.5:7b',
     
     // Request timeout in milliseconds (increase for slower GPUs)
     timeout: 60000,
