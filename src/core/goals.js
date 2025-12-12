@@ -26,17 +26,55 @@ export function getNextAction(bot) {
     }
     
     // GOAL 2: Get cobblestone (need pickaxe first)
-    if (inv.hasWoodenPickaxe && inv.cobblestone < 3) {
-        return { action: 'mine', target: 'stone', reason: 'Need cobblestone for stone pickaxe' };
+    if (inv.hasWoodenPickaxe && inv.cobblestone < 8) {
+        return { action: 'mine', target: 'stone', reason: 'Need cobblestone for tools' };
     }
     
-    // GOAL 3: Get stone pickaxe
-    if (inv.cobblestone >= 3 && inv.sticks >= 2 && nearbyTable && !inv.hasStonePickaxe) {
-        return { action: 'craft', target: 'stone_pickaxe', reason: 'Upgrade to stone pickaxe' };
+    // GOAL 3: Need sticks for stone pickaxe
+    if (inv.cobblestone >= 3 && inv.sticks < 2) {
+        if (inv.planks >= 2) {
+            return { action: 'craft', target: 'stick', reason: 'Need sticks for stone pickaxe' };
+        } else if (inv.logs > 0) {
+            const plankType = getPlankTypeFromLogs(inv);
+            return { action: 'craft', target: plankType, reason: 'Need planks for sticks' };
+        } else {
+            const logType = findNearbyLogType(bot);
+            return { action: 'mine', target: logType, reason: 'Need wood for sticks' };
+        }
     }
     
-    // If we have basic tools, let LLM decide what to do next
-    return null;
+    // GOAL 4: Get stone pickaxe
+    if (inv.cobblestone >= 3 && inv.sticks >= 2 && !inv.hasStonePickaxe) {
+        // Need crafting table nearby
+        if (!nearbyTable) {
+            if (inv.hasCraftingTable) {
+                return { action: 'place', target: 'crafting_table', reason: 'Place table for stone pickaxe' };
+            }
+            const distantTable = findDistantCraftingTable(bot);
+            if (distantTable) {
+                return { action: 'goto', target: 'crafting_table', reason: 'Go to crafting table' };
+            }
+            // Need to make a new one
+            if (inv.planks >= 4) {
+                return { action: 'craft', target: 'crafting_table', reason: 'Need table for stone pickaxe' };
+            }
+        } else {
+            return { action: 'craft', target: 'stone_pickaxe', reason: 'Upgrade to stone pickaxe!' };
+        }
+    }
+    
+    // GOAL 5: Get iron ore (need stone pickaxe)
+    if (inv.hasStonePickaxe && inv.ironOre < 3) {
+        return { action: 'mine', target: 'iron_ore', reason: 'Need iron for better tools' };
+    }
+    
+    // GOAL 6: Keep mining cobblestone for furnace/building
+    if (inv.hasStonePickaxe && inv.cobblestone < 20) {
+        return { action: 'mine', target: 'stone', reason: 'Gathering cobblestone' };
+    }
+    
+    // GOAL 7: Explore to find resources
+    return { action: 'explore', target: 'random', reason: 'Looking for resources' };
 }
 
 /**
@@ -125,6 +163,7 @@ function analyzeInventory(bot) {
     let planks = 0;
     let sticks = 0;
     let cobblestone = 0;
+    let ironOre = 0;
     let hasCraftingTable = false;
     let hasWoodenPickaxe = false;
     let hasStonePickaxe = false;
@@ -152,6 +191,10 @@ function analyzeInventory(bot) {
             cobblestone += item.count;
         }
         
+        if (name === 'raw_iron' || name === 'iron_ore') {
+            ironOre += item.count;
+        }
+        
         if (name === 'crafting_table') {
             hasCraftingTable = true;
         }
@@ -170,6 +213,7 @@ function analyzeInventory(bot) {
         planks,
         sticks,
         cobblestone,
+        ironOre,
         hasCraftingTable,
         hasWoodenPickaxe,
         hasStonePickaxe,
