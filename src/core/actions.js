@@ -351,6 +351,40 @@ async function executeWait(bot) {
 }
 
 /**
+ * Execute a goto action (move to a specific block type)
+ */
+async function executeGoto(bot, target) {
+    logger.action(`Going to: ${target}`);
+    
+    const mcData = bot.mcData;
+    const blockType = mcData.blocksByName[target];
+    
+    if (!blockType) {
+        throw new Error(`Unknown block type: ${target}`);
+    }
+    
+    // Find the block
+    const block = bot.findBlock({
+        matching: blockType.id,
+        maxDistance: 64
+    });
+    
+    if (!block) {
+        throw new Error(`No ${target} found nearby`);
+    }
+    
+    // Move to the block
+    const { GoalNear } = goals;
+    const defaultMove = new Movements(bot);
+    bot.pathfinder.setMovements(defaultMove);
+    
+    await bot.pathfinder.goto(new GoalNear(block.position.x, block.position.y, block.position.z, 2));
+    
+    logger.success(`Reached ${target}`);
+    return { success: true };
+}
+
+/**
  * Main action executor
  * Routes LLM decisions to specific action handlers
  */
@@ -414,6 +448,11 @@ export async function executeAction(bot, decision) {
                 
             case 'wait':
                 await executeWait(bot);
+                result.success = true;
+                break;
+                
+            case 'goto':
+                await executeGoto(bot, target);
                 result.success = true;
                 break;
                 

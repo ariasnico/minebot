@@ -54,24 +54,51 @@ function getPickaxeAction(inv, nearbyTable, bot) {
         return { action: 'craft', target: plankType, reason: 'Converting logs to planks' };
     }
     
-    // Step 3: Need crafting table
+    // Step 3: Need crafting table - but only craft if we don't have one
     if (!inv.hasCraftingTable && inv.planks >= 4) {
         return { action: 'craft', target: 'crafting_table', reason: 'Need crafting table for pickaxe' };
     }
     
-    // Step 4: Place crafting table
+    // Step 4: Place crafting table if we have one but none nearby
     if (inv.hasCraftingTable && !nearbyTable) {
         return { action: 'place', target: 'crafting_table', reason: 'Placing crafting table' };
     }
     
-    // Step 5: Make sticks (need 2 for pickaxe)
+    // Step 5: If no crafting table nearby and we don't have one, find one in the world or get materials
+    if (!nearbyTable && !inv.hasCraftingTable) {
+        // Try to find a crafting table in the world (within 32 blocks)
+        const distantTable = findDistantCraftingTable(bot);
+        if (distantTable) {
+            return { action: 'goto', target: 'crafting_table', reason: 'Going to crafting table' };
+        }
+        // Otherwise need to make one
+        if (inv.planks < 4) {
+            const logType = findNearbyLogType(bot);
+            return { action: 'mine', target: logType, reason: 'Need wood for crafting table' };
+        }
+    }
+    
+    // Step 6: Make sticks (need 2 for pickaxe) - only if near table
     if (nearbyTable && inv.sticks < 2 && inv.planks >= 2) {
         return { action: 'craft', target: 'stick', reason: 'Need sticks for pickaxe' };
     }
     
-    // Step 6: Make the pickaxe!
+    // Step 7: Make the pickaxe! - only if near table
     if (nearbyTable && inv.sticks >= 2 && inv.planks >= 3) {
         return { action: 'craft', target: 'wooden_pickaxe', reason: 'Crafting wooden pickaxe!' };
+    }
+    
+    // Step 8: If we have materials but no nearby table, we need to find/place one
+    if (!nearbyTable && inv.sticks >= 2 && inv.planks >= 3) {
+        // Check if there's a table somewhere we can go to
+        const distantTable = findDistantCraftingTable(bot);
+        if (distantTable) {
+            return { action: 'goto', target: 'crafting_table', reason: 'Going to crafting table to craft pickaxe' };
+        }
+        // Otherwise we need to make and place one
+        if (inv.planks >= 4 && !inv.hasCraftingTable) {
+            return { action: 'craft', target: 'crafting_table', reason: 'Need crafting table' };
+        }
     }
     
     // Need more materials
@@ -146,7 +173,7 @@ function analyzeInventory(bot) {
 }
 
 /**
- * Find nearby crafting table
+ * Find nearby crafting table (within 4 blocks - can use it)
  */
 function findNearbyCraftingTable(bot) {
     const mcData = bot.mcData;
@@ -159,6 +186,24 @@ function findNearbyCraftingTable(bot) {
         maxDistance: 4
     });
 }
+
+/**
+ * Find distant crafting table (within 32 blocks - need to walk to it)
+ */
+function findDistantCraftingTable(bot) {
+    const mcData = bot.mcData;
+    const craftingTableId = mcData.blocksByName['crafting_table']?.id;
+    
+    if (!craftingTableId) return null;
+    
+    return bot.findBlock({
+        matching: craftingTableId,
+        maxDistance: 32
+    });
+}
+
+// Export for use in actions.js
+export { findDistantCraftingTable };
 
 /**
  * Find what type of log is nearby
