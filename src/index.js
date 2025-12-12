@@ -190,17 +190,26 @@ async function cognitiveLoop() {
 
         // 3. ACT - Execute the decision
         if (decision.action !== 'wait') {
-            lastActionResult = await executeAction(bot, decision);
+            const result = await executeAction(bot, decision);
+            // Only keep essential info to prevent memory buildup
+            lastActionResult = {
+                action: result.action,
+                success: result.success,
+                error: result.error || null
+            };
         } else {
-            lastActionResult = { action: 'wait', success: true };
+            lastActionResult = { action: 'wait', success: true, error: null };
         }
+        
+        // Clean up decision object
+        decision = null;
 
     } catch (error) {
         logger.error('Cognitive loop error', error.message);
         lastActionResult = {
             action: 'error',
             success: false,
-            error: error.message
+            error: error.message.substring(0, 100) // Limit error message size
         };
     } finally {
         isThinking = false;
