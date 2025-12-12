@@ -16,6 +16,7 @@ import { logger } from './utils/logger.js';
 import { perceive, formatPerceptionForLLM } from './core/perception.js';
 import { think, testConnection } from './core/brain.js';
 import { executeAction, isExecuting } from './core/actions.js';
+import { getNextAction } from './core/goals.js';
 
 // Global bot instance
 let bot = null;
@@ -157,7 +158,7 @@ function setupEventHandlers() {
 
 /**
  * The main cognitive loop
- * Perceive → Think → Act
+ * Perceive → Think (Deterministic first, then LLM) → Act
  */
 async function cognitiveLoop() {
     // Skip if already thinking or executing
@@ -168,13 +169,24 @@ async function cognitiveLoop() {
     try {
         isThinking = true;
 
-        // 1. PERCEIVE - Gather environment context
-        const perception = perceive(bot, lastActionResult);
-        const context = formatPerceptionForLLM(perception);
+        let decision;
 
-        // 2. THINK - Query LLM for decision
-        logger.brain('Thinking...');
-        const decision = await think(context);
+        // 1. TRY DETERMINISTIC GOALS FIRST (faster, more reliable)
+        const deterministicAction = getNextAction(bot);
+        
+        if (deterministicAction) {
+            // Use deterministic decision
+            logger.brain(`[AUTO] ${deterministicAction.action.toUpperCase()} → ${deterministicAction.target}`);
+            logger.status('', deterministicAction.reason, 'cyan');
+            decision = deterministicAction;
+        } else {
+            // 2. FALL BACK TO LLM for complex decisions
+            const perception = perceive(bot, lastActionResult);
+            const context = formatPerceptionForLLM(perception);
+
+            logger.brain('Thinking with LLM...');
+            decision = await think(context);
+        }
 
         // 3. ACT - Execute the decision
         if (decision.action !== 'wait') {
