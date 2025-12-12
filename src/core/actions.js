@@ -37,6 +37,7 @@ function setBusy(action, busy) {
 
 /**
  * Execute a mining/block collection action
+ * Prefers exposed blocks (adjacent to air) to avoid digging straight down
  */
 async function executeMine(bot, target) {
     const mcData = bot.mcData;
@@ -48,26 +49,75 @@ async function executeMine(bot, target) {
     
     logger.action(`Mining: ${target}`);
     
-    // Find the block
-    const block = bot.findBlock({
+    // Find multiple candidate blocks
+    const blocks = bot.findBlocks({
         matching: blockType.id,
-        maxDistance: BEHAVIOR_CONFIG.mining.maxDistance
+        maxDistance: BEHAVIOR_CONFIG.mining.maxDistance,
+        count: 20
     });
     
-    if (!block) {
+    if (blocks.length === 0) {
         throw new Error(`No ${target} found within ${BEHAVIOR_CONFIG.mining.maxDistance} blocks`);
+    }
+    
+    // Prefer exposed blocks (adjacent to air) and at or above bot's Y level
+    // This prevents digging straight down into holes
+    let bestBlock = null;
+    let bestScore = -Infinity;
+    
+    for (const pos of blocks) {
+        const block = bot.blockAt(pos);
+        if (!block) continue;
+        
+        let score = 0;
+        
+        // Prefer blocks at or above bot's Y level
+        const yDiff = pos.y - bot.entity.position.y;
+        if (yDiff >= -2) score += 10; // At or above = good
+        if (yDiff >= 0) score += 5;   // Same level or higher = better
+        if (yDiff < -3) score -= 20;  // Deep below = bad (avoid digging down)
+        
+        // Prefer exposed blocks (has air neighbor)
+        const neighbors = [
+            bot.blockAt(pos.offset(1, 0, 0)),
+            bot.blockAt(pos.offset(-1, 0, 0)),
+            bot.blockAt(pos.offset(0, 1, 0)),
+            bot.blockAt(pos.offset(0, -1, 0)),
+            bot.blockAt(pos.offset(0, 0, 1)),
+            bot.blockAt(pos.offset(0, 0, -1))
+        ];
+        
+        const hasAirNeighbor = neighbors.some(n => n && (n.name === 'air' || n.name === 'cave_air'));
+        if (hasAirNeighbor) score += 15; // Exposed = very good
+        
+        // Prefer closer blocks
+        const distance = pos.distanceTo(bot.entity.position);
+        score -= distance * 0.5;
+        
+        // Check if we can see this block
+        if (bot.canSeeBlock(block)) score += 5;
+        
+        if (score > bestScore) {
+            bestScore = score;
+            bestBlock = block;
+        }
+    }
+    
+    if (!bestBlock) {
+        // Fallback to first block found
+        bestBlock = bot.blockAt(blocks[0]);
     }
     
     // Use collectBlock plugin if available
     if (bot.collectBlock) {
-        await bot.collectBlock.collect(block, {
+        await bot.collectBlock.collect(bestBlock, {
             timeout: BEHAVIOR_CONFIG.mining.timeout
         });
     } else {
         // Fallback: pathfind and dig manually
         const { GoalNear } = goals;
-        await bot.pathfinder.goto(new GoalNear(block.position.x, block.position.y, block.position.z, 2));
-        await bot.dig(block);
+        await bot.pathfinder.goto(new GoalNear(bestBlock.position.x, bestBlock.position.y, bestBlock.position.z, 2));
+        await bot.dig(bestBlock);
     }
     
     logger.success(`Collected ${target}`);

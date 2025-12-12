@@ -222,7 +222,8 @@ function analyzeInventory(bot) {
 }
 
 /**
- * Find nearby crafting table (within 4 blocks - can use it)
+ * Find nearby crafting table (within 3 blocks - can use it)
+ * Also checks if bot can actually see it (no blocks in between)
  */
 function findNearbyCraftingTable(bot) {
     const mcData = bot.mcData;
@@ -230,14 +231,23 @@ function findNearbyCraftingTable(bot) {
     
     if (!craftingTableId) return null;
     
-    return bot.findBlock({
+    const table = bot.findBlock({
         matching: craftingTableId,
-        maxDistance: 4
+        maxDistance: 3
     });
+    
+    // Verify we can actually reach it (not through walls)
+    if (table) {
+        const canSee = bot.canSeeBlock(table);
+        if (!canSee) return null;
+    }
+    
+    return table;
 }
 
 /**
  * Find distant crafting table (within 32 blocks - need to walk to it)
+ * Only returns tables the bot can actually path to
  */
 function findDistantCraftingTable(bot) {
     const mcData = bot.mcData;
@@ -245,10 +255,22 @@ function findDistantCraftingTable(bot) {
     
     if (!craftingTableId) return null;
     
-    return bot.findBlock({
+    // Find all tables within range
+    const tables = bot.findBlocks({
         matching: craftingTableId,
-        maxDistance: 32
+        maxDistance: 32,
+        count: 5
     });
+    
+    // Return the first one that bot can see (not through walls)
+    for (const pos of tables) {
+        const block = bot.blockAt(pos);
+        if (block && bot.canSeeBlock(block)) {
+            return block;
+        }
+    }
+    
+    return null;
 }
 
 // Export for use in actions.js
