@@ -260,40 +260,55 @@ export function perceive(bot, lastAction = null) {
 export function formatPerceptionForLLM(perception) {
     const p = perception;
     
-    let context = `=== CURRENT STATE ===
-Health: ${p.status.health}/${p.status.maxHealth}
-Food: ${p.status.food}/${p.status.maxFood}
-Position: X:${p.status.position.x} Y:${p.status.position.y} Z:${p.status.position.z}
-Biome: ${p.status.biome}
-Time: ${p.world.time}
-Weather: ${p.world.isRaining ? 'Raining' : 'Clear'}
+    // Check if inventory is essentially empty
+    const hasLogs = p.inventory.blocks.some(b => b.includes('log'));
+    const hasPlanks = p.inventory.blocks.some(b => b.includes('planks'));
+    const hasSticks = p.inventory.materials.some(m => m.includes('stick'));
+    const hasCraftingTable = p.inventory.blocks.some(b => b.includes('crafting_table'));
+    const totalItems = p.inventory.tools.length + p.inventory.weapons.length + 
+                       p.inventory.food.length + p.inventory.blocks.length + 
+                       p.inventory.materials.length;
+    
+    let context = `=== STATUS ===
+Health: ${p.status.health}/20 ${p.status.health < 6 ? '⚠️ LOW!' : ''}
+Food: ${p.status.food}/20
 
-=== INVENTORY ===
+=== INVENTORY (${totalItems === 0 ? 'EMPTY!' : totalItems + ' items'}) ===
+Logs: ${hasLogs ? p.inventory.blocks.filter(b => b.includes('log')).join(', ') : 'NONE - NEED TO MINE TREES!'}
+Planks: ${hasPlanks ? p.inventory.blocks.filter(b => b.includes('planks')).join(', ') : 'None'}
+Sticks: ${hasSticks ? p.inventory.materials.filter(m => m.includes('stick')).join(', ') : 'None'}
+Crafting Table: ${hasCraftingTable ? 'Yes (in inventory - need to PLACE it!)' : 'No'}
 Tools: ${p.inventory.tools.length > 0 ? p.inventory.tools.join(', ') : 'None'}
 Weapons: ${p.inventory.weapons.length > 0 ? p.inventory.weapons.join(', ') : 'None'}
 Food: ${p.inventory.food.length > 0 ? p.inventory.food.join(', ') : 'None'}
-Blocks: ${p.inventory.blocks.length > 0 ? p.inventory.blocks.join(', ') : 'None'}
-Materials: ${p.inventory.materials.length > 0 ? p.inventory.materials.join(', ') : 'None'}
+Other: ${p.inventory.materials.filter(m => !m.includes('stick')).join(', ') || 'None'}
 
 === NEARBY ===
+Trees: ${p.nearby.blocks.wood.length > 0 ? p.nearby.blocks.wood.map(w => `${w.name}:${w.count}`).join(', ') : 'None visible'}
+Crafting table nearby: ${p.nearby.blocks.crafting_table ? 'YES ✓' : 'No'}
 Hostile Mobs: ${p.nearby.entities.hostile.length > 0 ? p.nearby.entities.hostile.map(e => `${e.name}(${e.distance}m)`).join(', ') : 'None'}
-Passive Mobs: ${p.nearby.entities.passive.length > 0 ? p.nearby.entities.passive.map(e => `${e.name}(${e.distance}m)`).join(', ') : 'None'}
-Players: ${p.nearby.entities.players.length > 0 ? p.nearby.entities.players.map(e => `${e.name}(${e.distance}m)`).join(', ') : 'None'}
 Ores: ${p.nearby.blocks.ores.length > 0 ? p.nearby.blocks.ores.map(o => `${o.name}:${o.count}`).join(', ') : 'None'}
-Trees: ${p.nearby.blocks.wood.length > 0 ? p.nearby.blocks.wood.map(w => `${w.name}:${w.count}`).join(', ') : 'None'}
-Water nearby: ${p.nearby.blocks.water ? 'Yes' : 'No'}
-Lava nearby: ${p.nearby.blocks.lava ? 'Yes' : 'No'}
-Crafting table nearby: ${p.nearby.blocks.crafting_table ? 'Yes' : 'No'}
 
-=== CAN CRAFT ===
-${p.craftable.length > 0 ? p.craftable.join(', ') : 'Nothing with current materials'}`;
+=== CAN CRAFT (only these!) ===
+${p.craftable.length > 0 ? p.craftable.join(', ') : 'NOTHING - need materials first!'}`;
 
     if (p.lastAction) {
         context += `\n\n=== LAST ACTION ===
-Action: ${p.lastAction.action}
-Target: ${p.lastAction.target || 'N/A'}
-Result: ${p.lastAction.success ? 'SUCCESS' : 'FAILED'}
-${p.lastAction.error ? `Error: ${p.lastAction.error}` : ''}`;
+${p.lastAction.action} → ${p.lastAction.target || 'N/A'}: ${p.lastAction.success ? 'SUCCESS ✓' : 'FAILED ✗'}
+${p.lastAction.error ? `Reason: ${p.lastAction.error}` : ''}`;
+    }
+    
+    // Add hints based on current state
+    if (totalItems === 0 || (!hasLogs && !hasPlanks)) {
+        context += `\n\n⚠️ HINT: Inventory empty! You MUST mine wood first (oak_log, birch_log, etc.)`;
+    } else if (hasLogs && !hasPlanks) {
+        context += `\n\n⚠️ HINT: You have logs! Craft them into planks.`;
+    } else if (hasPlanks && !hasSticks) {
+        context += `\n\n⚠️ HINT: You have planks! Craft sticks.`;
+    } else if (hasPlanks && !hasCraftingTable && !p.nearby.blocks.crafting_table) {
+        context += `\n\n⚠️ HINT: Craft a crafting_table!`;
+    } else if (hasCraftingTable && !p.nearby.blocks.crafting_table) {
+        context += `\n\n⚠️ HINT: Place the crafting_table! Use action "place" with target "crafting_table"`;
     }
     
     return context;
