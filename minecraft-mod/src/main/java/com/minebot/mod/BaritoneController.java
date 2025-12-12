@@ -1,11 +1,5 @@
 package com.minebot.mod;
 
-import baritone.api.BaritoneAPI;
-import baritone.api.IBaritone;
-import baritone.api.pathing.goals.GoalBlock;
-import baritone.api.pathing.goals.GoalXZ;
-import baritone.api.pathing.goals.GoalNear;
-import baritone.api.process.IBaritoneProcess;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
@@ -13,24 +7,26 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Controller that bridges our AI commands to Baritone
+ * Controller that bridges our AI commands to Baritone (loaded at runtime)
  * 
- * Supports:
- * - mine: Mine specific blocks
- * - goto: Go to coordinates or find specific block
- * - explore: Explore the world
- * - stop: Stop current action
- * - craft: (future) Craft items
+ * Baritone is detected and used via reflection, allowing the mod to work
+ * with any Baritone version installed by the user.
  */
 public class BaritoneController {
     private String currentAction = "idle";
     private String currentTarget = "";
     private long actionStartTime = 0;
+    
+    // Baritone API access via reflection
+    private Object baritoneInstance = null;
+    private boolean baritoneAvailable = false;
     
     // Block name to Block mapping for mining
     private static final Map<String, Block> BLOCK_MAP = new HashMap<>();
@@ -48,11 +44,8 @@ public class BaritoneController {
         BLOCK_MAP.put("copper_ore", Blocks.COPPER_ORE);
         BLOCK_MAP.put("deepslate_copper_ore", Blocks.DEEPSLATE_COPPER_ORE);
         BLOCK_MAP.put("lapis_ore", Blocks.LAPIS_ORE);
-        BLOCK_MAP.put("deepslate_lapis_ore", Blocks.DEEPSLATE_LAPIS_ORE);
         BLOCK_MAP.put("redstone_ore", Blocks.REDSTONE_ORE);
-        BLOCK_MAP.put("deepslate_redstone_ore", Blocks.DEEPSLATE_REDSTONE_ORE);
         BLOCK_MAP.put("emerald_ore", Blocks.EMERALD_ORE);
-        BLOCK_MAP.put("deepslate_emerald_ore", Blocks.DEEPSLATE_EMERALD_ORE);
         
         // Wood
         BLOCK_MAP.put("oak_log", Blocks.OAK_LOG);
@@ -67,12 +60,9 @@ public class BaritoneController {
         // Stone
         BLOCK_MAP.put("stone", Blocks.STONE);
         BLOCK_MAP.put("cobblestone", Blocks.COBBLESTONE);
-        BLOCK_MAP.put("granite", Blocks.GRANITE);
-        BLOCK_MAP.put("diorite", Blocks.DIORITE);
-        BLOCK_MAP.put("andesite", Blocks.ANDESITE);
         BLOCK_MAP.put("deepslate", Blocks.DEEPSLATE);
         
-        // Other useful blocks
+        // Other
         BLOCK_MAP.put("crafting_table", Blocks.CRAFTING_TABLE);
         BLOCK_MAP.put("furnace", Blocks.FURNACE);
         BLOCK_MAP.put("chest", Blocks.CHEST);
@@ -82,22 +72,58 @@ public class BaritoneController {
     }
     
     public BaritoneController() {
-        MineBotMod.LOGGER.info("BaritoneController initialized");
+        // Try to detect Baritone
+        detectBaritone();
+    }
+    
+    /**
+     * Detect if Baritone is installed via reflection
+     */
+    private void detectBaritone() {
+        try {
+            Class<?> baritoneApiClass = Class.forName("baritone.api.BaritoneAPI");
+            Method getProvider = baritoneApiClass.getMethod("getProvider");
+            Object provider = getProvider.invoke(null);
+            
+            Method getPrimaryBaritone = provider.getClass().getMethod("getPrimaryBaritone");
+            baritoneInstance = getPrimaryBaritone.invoke(provider);
+            
+            baritoneAvailable = true;
+            MineBotMod.LOGGER.info("✓ Baritone detected and ready!");
+        } catch (ClassNotFoundException e) {
+            MineBotMod.LOGGER.warn("Baritone not found. Install Baritone for better pathfinding.");
+            MineBotMod.LOGGER.warn("Download from: https://github.com/cabaletta/baritone/releases");
+            baritoneAvailable = false;
+        } catch (Exception e) {
+            MineBotMod.LOGGER.error("Error detecting Baritone: " + e.getMessage());
+            baritoneAvailable = false;
+        }
     }
     
     /**
      * Called every game tick to update state
      */
     public void tick(MinecraftClient client) {
-        IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+        if (!baritoneAvailable || baritoneInstance == null) return;
         
-        // Check if Baritone is still running a process
-        IBaritoneProcess active = baritone.getPathingControlManager().mostRecentInControl().orElse(null);
-        if (active == null && !currentAction.equals("idle")) {
-            // Action completed
-            MineBotMod.LOGGER.info("Action completed: " + currentAction + " -> " + currentTarget);
-            currentAction = "idle";
-            currentTarget = "";
+        try {
+            // Check if Baritone is still running a process
+            Method getPathingControlManager = baritoneInstance.getClass().getMethod("getPathingControlManager");
+            Object pathingControlManager = getPathingControlManager.invoke(baritoneInstance);
+            
+            Method mostRecentInControl = pathingControlManager.getClass().getMethod("mostRecentInControl");
+            Object optional = mostRecentInControl.invoke(pathingControlManager);
+            
+            Method isPresent = optional.getClass().getMethod("isPresent");
+            boolean hasActiveProcess = (Boolean) isPresent.invoke(optional);
+            
+            if (!hasActiveProcess && !currentAction.equals("idle")) {
+                MineBotMod.LOGGER.info("Action completed: " + currentAction + " -> " + currentTarget);
+                currentAction = "idle";
+                currentTarget = "";
+            }
+        } catch (Exception e) {
+            // Ignore tick errors
         }
     }
     
@@ -107,24 +133,26 @@ public class BaritoneController {
     public String executeCommand(String action, String target, String reason) {
         MineBotMod.LOGGER.info("Executing: " + action + " -> " + target + " (" + reason + ")");
         
-        IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+        if (!baritoneAvailable) {
+            return "{\"success\": false, \"error\": \"Baritone not installed. Please install Baritone mod.\"}";
+        }
         
         try {
             switch (action.toLowerCase()) {
                 case "mine":
-                    return executeMine(baritone, target);
+                    return executeMine(target);
                     
                 case "goto":
-                    return executeGoto(baritone, target);
+                    return executeGoto(target);
                     
                 case "explore":
-                    return executeExplore(baritone);
+                    return executeExplore();
                     
                 case "stop":
-                    return executeStop(baritone);
+                    return executeStop();
                     
                 case "follow":
-                    return executeFollow(baritone, target);
+                    return executeFollow(target);
                     
                 default:
                     return "{\"success\": false, \"error\": \"Unknown action: " + action + "\"}";
@@ -135,11 +163,10 @@ public class BaritoneController {
         }
     }
     
-    private String executeMine(IBaritone baritone, String target) {
+    private String executeMine(String target) throws Exception {
         Block block = BLOCK_MAP.get(target.toLowerCase());
         
         if (block == null) {
-            // Try to find block by registry name
             try {
                 Identifier id = Identifier.of("minecraft", target.toLowerCase());
                 block = Registries.BLOCK.get(id);
@@ -155,74 +182,79 @@ public class BaritoneController {
         currentTarget = target;
         actionStartTime = System.currentTimeMillis();
         
-        // Use Baritone's mine command
-        baritone.getMineProcess().mine(block);
+        // Call Baritone mine via reflection
+        Method getMineProcess = baritoneInstance.getClass().getMethod("getMineProcess");
+        Object mineProcess = getMineProcess.invoke(baritoneInstance);
+        
+        Method mine = mineProcess.getClass().getMethod("mine", Block[].class);
+        mine.invoke(mineProcess, (Object) new Block[]{block});
         
         return "{\"success\": true, \"action\": \"mine\", \"target\": \"" + target + "\"}";
     }
     
-    private String executeGoto(IBaritone baritone, String target) {
-        // Parse coordinates: "x,y,z" or "x,z"
+    private String executeGoto(String target) throws Exception {
         String[] parts = target.split(",");
         
-        try {
-            if (parts.length == 3) {
-                int x = Integer.parseInt(parts[0].trim());
-                int y = Integer.parseInt(parts[1].trim());
-                int z = Integer.parseInt(parts[2].trim());
-                
-                currentAction = "going_to";
-                currentTarget = target;
-                baritone.getCustomGoalProcess().setGoalAndPath(new GoalBlock(x, y, z));
-                
-            } else if (parts.length == 2) {
-                int x = Integer.parseInt(parts[0].trim());
-                int z = Integer.parseInt(parts[1].trim());
-                
-                currentAction = "going_to";
-                currentTarget = target;
-                baritone.getCustomGoalProcess().setGoalAndPath(new GoalXZ(x, z));
-                
-            } else {
-                // Try to interpret as block name to find
-                Block block = BLOCK_MAP.get(target.toLowerCase());
-                if (block != null) {
-                    currentAction = "finding";
-                    currentTarget = target;
-                    baritone.getMineProcess().mine(1, block); // Find 1 block
-                    return "{\"success\": true, \"action\": \"find\", \"target\": \"" + target + "\"}";
-                }
-                return "{\"success\": false, \"error\": \"Invalid coordinates format. Use x,y,z or x,z\"}";
-            }
+        if (parts.length >= 2) {
+            int x = Integer.parseInt(parts[0].trim());
+            int z = parts.length == 2 ? Integer.parseInt(parts[1].trim()) : Integer.parseInt(parts[2].trim());
+            int y = parts.length == 3 ? Integer.parseInt(parts[1].trim()) : 64;
+            
+            currentAction = "going_to";
+            currentTarget = target;
+            
+            // Call Baritone goto via reflection
+            Method getCustomGoalProcess = baritoneInstance.getClass().getMethod("getCustomGoalProcess");
+            Object customGoalProcess = getCustomGoalProcess.invoke(baritoneInstance);
+            
+            // Create GoalBlock
+            Class<?> goalBlockClass = Class.forName("baritone.api.pathing.goals.GoalBlock");
+            Object goal = goalBlockClass.getConstructor(int.class, int.class, int.class).newInstance(x, y, z);
+            
+            // Set goal and path
+            Class<?> goalClass = Class.forName("baritone.api.pathing.goals.Goal");
+            Method setGoalAndPath = customGoalProcess.getClass().getMethod("setGoalAndPath", goalClass);
+            setGoalAndPath.invoke(customGoalProcess, goal);
             
             return "{\"success\": true, \"action\": \"goto\", \"target\": \"" + target + "\"}";
-            
-        } catch (NumberFormatException e) {
-            return "{\"success\": false, \"error\": \"Invalid coordinates: " + target + "\"}";
         }
+        
+        return "{\"success\": false, \"error\": \"Invalid coordinates. Use: x,y,z or x,z\"}";
     }
     
-    private String executeExplore(IBaritone baritone) {
+    private String executeExplore() throws Exception {
         currentAction = "exploring";
         currentTarget = "world";
         
-        baritone.getExploreProcess().explore(
-            (int) MinecraftClient.getInstance().player.getX(),
-            (int) MinecraftClient.getInstance().player.getZ()
-        );
+        MinecraftClient client = MinecraftClient.getInstance();
+        int x = (int) client.player.getX();
+        int z = (int) client.player.getZ();
+        
+        // Call Baritone explore via reflection
+        Method getExploreProcess = baritoneInstance.getClass().getMethod("getExploreProcess");
+        Object exploreProcess = getExploreProcess.invoke(baritoneInstance);
+        
+        Method explore = exploreProcess.getClass().getMethod("explore", int.class, int.class);
+        explore.invoke(exploreProcess, x, z);
         
         return "{\"success\": true, \"action\": \"explore\"}";
     }
     
-    private String executeStop(IBaritone baritone) {
-        baritone.getPathingBehavior().cancelEverything();
+    private String executeStop() throws Exception {
+        // Call Baritone cancel via reflection
+        Method getPathingBehavior = baritoneInstance.getClass().getMethod("getPathingBehavior");
+        Object pathingBehavior = getPathingBehavior.invoke(baritoneInstance);
+        
+        Method cancelEverything = pathingBehavior.getClass().getMethod("cancelEverything");
+        cancelEverything.invoke(pathingBehavior);
+        
         currentAction = "idle";
         currentTarget = "";
         
         return "{\"success\": true, \"action\": \"stop\"}";
     }
     
-    private String executeFollow(IBaritone baritone, String playerName) {
+    private String executeFollow(String playerName) throws Exception {
         MinecraftClient client = MinecraftClient.getInstance();
         
         var targetPlayer = client.world.getPlayers().stream()
@@ -237,9 +269,22 @@ public class BaritoneController {
         currentAction = "following";
         currentTarget = playerName;
         
-        baritone.getFollowProcess().follow(entity -> 
-            entity.getName().getString().equalsIgnoreCase(playerName)
-        );
+        // Call Baritone follow via reflection
+        Method getFollowProcess = baritoneInstance.getClass().getMethod("getFollowProcess");
+        Object followProcess = getFollowProcess.invoke(baritoneInstance);
+        
+        // Create predicate for follow
+        Method follow = followProcess.getClass().getMethod("follow", java.util.function.Predicate.class);
+        follow.invoke(followProcess, (java.util.function.Predicate<?>) entity -> {
+            try {
+                Method getName = entity.getClass().getMethod("getName");
+                Object name = getName.invoke(entity);
+                Method getString = name.getClass().getMethod("getString");
+                return getString.invoke(name).toString().equalsIgnoreCase(playerName);
+            } catch (Exception e) {
+                return false;
+            }
+        });
         
         return "{\"success\": true, \"action\": \"follow\", \"target\": \"" + playerName + "\"}";
     }
@@ -251,11 +296,12 @@ public class BaritoneController {
         long elapsed = currentAction.equals("idle") ? 0 : System.currentTimeMillis() - actionStartTime;
         
         return String.format(
-            "{\"action\": \"%s\", \"target\": \"%s\", \"elapsed_ms\": %d, \"busy\": %s}",
+            "{\"action\": \"%s\", \"target\": \"%s\", \"elapsed_ms\": %d, \"busy\": %s, \"baritone\": %s}",
             currentAction,
             currentTarget,
             elapsed,
-            !currentAction.equals("idle")
+            !currentAction.equals("idle"),
+            baritoneAvailable
         );
     }
     
@@ -289,5 +335,8 @@ public class BaritoneController {
         json.append("]}");
         return json.toString();
     }
+    
+    public boolean isBaritoneAvailable() {
+        return baritoneAvailable;
+    }
 }
-

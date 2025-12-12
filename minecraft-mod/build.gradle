@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.9-SNAPSHOT'
+    id 'fabric-loom' version '1.9.2'
     id 'maven-publish'
 }
 
@@ -12,10 +12,6 @@ base {
 
 repositories {
     mavenCentral()
-    maven {
-        name = "Baritone"
-        url = "https://repo.cabaletta.tech/repository/maven-public/"
-    }
 }
 
 loom {
@@ -29,10 +25,8 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     
-    // Baritone
-    modImplementation "baritone:baritone-unoptimized-fabric:${project.baritone_version}"
-    
-    // HTTP Server (built into Java, no extra deps needed)
+    // Baritone will be loaded at runtime (user installs it separately)
+    // This allows the mod to work with any Baritone version
 }
 
 processResources {
