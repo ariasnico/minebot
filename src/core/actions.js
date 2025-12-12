@@ -87,39 +87,61 @@ async function executeCraft(bot, target) {
     
     logger.action(`Crafting: ${target}`);
     
-    // Get recipes
-    const recipes = bot.recipesFor(item.id);
+    // Find crafting table first if needed for complex recipes
+    let craftingTable = null;
+    const tableBlock = bot.findBlock({
+        matching: mcData.blocksByName.crafting_table.id,
+        maxDistance: 32
+    });
     
-    if (!recipes || recipes.length === 0) {
-        throw new Error(`Cannot craft ${target} with current inventory`);
+    if (tableBlock) {
+        craftingTable = tableBlock;
+        logger.info(`Found crafting table at ${tableBlock.position}`);
     }
     
-    // Check if we need a crafting table
-    const recipe = recipes[0];
-    let craftingTable = null;
+    // Get recipes (with or without crafting table)
+    const recipes = bot.recipesFor(item.id, null, 1, craftingTable);
     
-    if (recipe.requiresTable) {
-        // Find nearby crafting table
-        const tableBlock = bot.findBlock({
-            matching: mcData.blocksByName.crafting_table.id,
-            maxDistance: 32
-        });
+    // Debug: log what we found
+    logger.info(`Recipes found for ${target}: ${recipes ? recipes.length : 0}`);
+    
+    if (!recipes || recipes.length === 0) {
+        // Try without crafting table
+        const recipesNoTable = bot.recipesFor(item.id, null, 1, null);
+        logger.info(`Recipes without table: ${recipesNoTable ? recipesNoTable.length : 0}`);
         
-        if (!tableBlock) {
-            throw new Error(`Need a crafting table nearby to craft ${target}`);
+        if (!recipesNoTable || recipesNoTable.length === 0) {
+            throw new Error(`Cannot craft ${target} with current inventory`);
         }
-        
-        // Move to the crafting table
+        // Use recipe without table
+        await bot.craft(recipesNoTable[0], 1, null);
+        logger.success(`Crafted ${target} (no table needed)`);
+        return { success: true };
+    }
+    
+    // Use the recipe we found (with crafting table context)
+    const recipe = recipes[0];
+    
+    // If recipe requires table and we found one, move to it
+    if (recipe.requiresTable && craftingTable) {
+        logger.info(`Recipe requires table, moving to it...`);
         const { GoalNear } = goals;
-        await bot.pathfinder.goto(new GoalNear(tableBlock.position.x, tableBlock.position.y, tableBlock.position.z, 2));
-        craftingTable = tableBlock;
+        try {
+            await bot.pathfinder.goto(new GoalNear(craftingTable.position.x, craftingTable.position.y, craftingTable.position.z, 2));
+        } catch (e) {
+            logger.warn(`Could not path to crafting table: ${e.message}`);
+        }
     }
     
     // Craft the item
-    await bot.craft(recipe, 1, craftingTable);
-    
-    logger.success(`Crafted ${target}`);
-    return { success: true };
+    try {
+        await bot.craft(recipe, 1, craftingTable);
+        logger.success(`Crafted ${target}`);
+        return { success: true };
+    } catch (craftError) {
+        logger.error(`Craft error: ${craftError.message}`);
+        throw craftError;
+    }
 }
 
 /**
