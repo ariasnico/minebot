@@ -45,9 +45,12 @@ DECISION TREE (follow in order!):
 8. Have pickaxe? → mine cobblestone
 9. Nothing nearby to mine? → explore
 
-SUPER IMPORTANT:
-- If you see "Crafting Table: Yes (in inventory" in state → YOUR NEXT ACTION MUST BE place crafting_table!
-- If you see "🚨 CRITICAL" in state → FOLLOW THAT INSTRUCTION EXACTLY!
+SUPER IMPORTANT - FOLLOW THESE EXACTLY:
+- If you see "🚨 CRITICAL" → COPY THE ACTION FROM "ACTION REQUIRED" EXACTLY!
+- If you see "crafting_table" in CAN CRAFT list → craft it immediately!
+- If you see "stick" in CAN CRAFT list and you don't have sticks → craft stick!
+- STOP mining logs once you have 4+ planks. Make the crafting_table!
+- Do NOT keep mining logs forever. Progress to the next step!
 
 COMMON MISTAKES TO AVOID:
 - Do NOT craft sticks without planks in inventory
